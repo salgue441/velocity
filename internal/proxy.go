@@ -42,10 +42,13 @@ import (
 )
 
 // Proxy represents a high-performance HTTP reverse proxy that forwards requests
-// to a single backend target. This structure encapsulates the target configuration
-// and the underlying httputil.ReverseProxy instance with optimized transport settings.
+// to a single backend target. This structure encapsulates the target
+// configuration and the underlying httputil.ReverseProxy instance with
 //
-// The Proxy implements intelligent request forwarding with the following features:
+//	optimized transport settings.
+//
+// The Proxy implements intelligent request forwarding with the following
+// features:
 //   - Automatic header modification for proxy identification
 //   - Connection pooling for optimal resource utilization
 //   - Configurable timeouts for reliability
@@ -237,7 +240,9 @@ func errorHandler(w http.ResponseWriter, r *http.Request, err error) {
 		"request_id": "%s"
 	}`, time.Now().UTC().Format(time.RFC3339), generateRequestID(r))
 
-	w.Write([]byte(errorResponse))
+	if _, writeErr := w.Write([]byte(errorResponse)); writeErr != nil {
+		fmt.Printf("❌ Failed to write error response: %v\n", writeErr)
+	}
 }
 
 // generateRequestID creates a unique identifier for request tracking and

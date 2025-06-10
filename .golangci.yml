@@ -1,48 +1,43 @@
-# Ultra-simplified golangci-lint configuration for CI stability
 run:
   timeout: 5m
   go: "1.23"
-  skip-dirs:
-    - vendor
-    - .git
-    - bin
-    - dist
-  skip-files:
-    - ".*\\.pb\\.go$"
-    - ".*_generated\\.go$"
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  govet:
+    check-shadowing: true
+
+  golint:
+    min-confidence: 0.8
+
+  gofmt:
+    simplify: true
+
+  goimports:
+    local-prefixes: velocity
+
+  misspell:
+    locale: US
 
 linters:
   disable-all: true
   enable:
     - errcheck # Check for unchecked errors
-    - gofmt # Check code formatting
-    - goimports # Check import formatting
-    - govet # Go vet analysis (but may cause issues)
-    - ineffassign # Check for ineffectual assignments
-    - misspell # Check for misspelled words
-    - unconvert # Check for unnecessary conversions
-    - unused # Check for unused code
-  disable:
-    - typecheck # Disable typecheck completely - causing issues
-    - staticcheck # Disable staticcheck - may cause issues
-
-linters-settings:
-  goimports:
-    local-prefixes: velocity
-
-  errcheck:
-    check-type-assertions: false
-    check-blank: false
+    - gofmt # Check formatting
+    - goimports # Check imports
+    - govet # Go vet
+    - ineffassign # Detect ineffectual assignments
+    - misspell # Detect misspellings
+    - typecheck # Type checking
+    - unused # Detect unused code
+    - deadcode # Detect dead code
+    - structcheck # Find unused struct fields
+    - varcheck # Find unused global variables and constants
 
 issues:
-  exclude-use-default: true
-  max-issues-per-linter: 50
-  max-same-issues: 10
-  exclude:
-    - "Error return value of.*is not checked"
-    - "exported.*should have comment.*or be unexported"
-  exclude-rules:
-    - path: "_test\\.go"
-      linters:
-        - errcheck
-        - unused
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
