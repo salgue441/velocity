@@ -497,9 +497,9 @@ targets: []
 func createTempFile(t *testing.T, name, content string) string {
 	tmpDir := t.TempDir()
 	tmpFile := filepath.Join(tmpDir, name)
-	
+
 	err := os.WriteFile(tmpFile, []byte(content), 0644)
 	require.NoError(t, err)
-	
+
 	return tmpFile
 }

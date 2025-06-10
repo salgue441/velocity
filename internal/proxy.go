@@ -1,36 +1,36 @@
-// Package internal provides the core reverse proxy implementation for the 
-// Velocity Gateway MVP
-// 
-// This package contains the fundamental HTTP proxying logic that forms the 
-// foundation of the Velocity API Gateway. The implementation focuses on 
+// Package internal provides the core reverse proxy implementation for the
+// Velocity Gateway MVP.
+//
+// This package contains the fundamental HTTP proxying logic that forms the
+// foundation of the Velocity API Gateway. The implementation focuses on
 // performance, reliability, and simplicity while providing a solid base for
-// future expansion.
+// future feature expansion.
 //
 // Core Components:
-//  - Proxy: Main reverse proxy structure managing target configuration
-//  - HTTP Transport optimization for connection pooling and timeouts
-//  - Request/response modification hooks for future middleware integration
-//  - Comprehensive error handling with structured error responses
+//   - Proxy: Main reverse proxy structure managing target configuration
+//   - HTTP transport optimization for connection pooling and timeouts
+//   - Request/response modification hooks for future middleware integration
+//   - Comprehensive error handling with structured error responses
 //
 // Performance Optimizations:
-//  - Connection reuse through HTTP keep-alive
-//  - Configurable timeout and connection limits
-//  - Efficient request forwarding with minimal allocation overhead
-//  - Transport-level optimizations for high-throughput scenarios
-// 
+//   - Connection reuse through HTTP keep-alive
+//   - Configurable timeout and connection limits
+//   - Efficient request forwarding with minimal allocation overhead
+//   - Transport-level optimizations for high-throughput scenarios
+//
 // Thread Safety:
 // All exported functions and types in this package are safe for concurrent use
-// by multiple goroutines. The underlying http.Transport handles connection 
+// by multiple goroutines. The underlying http.Transport handles connection
 // pooling and thread safety automatically.
 //
 // Example Usage:
-//   proxy, err := internal.NewProxy("http://backend.example.com:8080")
-//   if err != nil {
-//       log.Fatal(err)
-//   }
-//   http.HandleFunc("/", proxy.ServeHTTP)
-//   http.ListenAndServe(":8080", nil)
-
+//
+//	proxy, err := internal.NewProxy("http://backend.example.com:8080")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	http.HandleFunc("/", proxy.ServeHTTP)
+//	http.ListenAndServe(":8080", nil)
 package internal
 
 import (
@@ -42,25 +42,24 @@ import (
 )
 
 // Proxy represents a high-performance HTTP reverse proxy that forwards requests
-// to a single backend target. This structure encapsulates the target 
-// configuration and the underlying httputil.ReverseProxy instance with
-//  optimized transport settings.
+// to a single backend target. This structure encapsulates the target configuration
+// and the underlying httputil.ReverseProxy instance with optimized transport settings.
 //
-// The Proxy implements intelligent request forwarding with the following 
-// features:
+// The Proxy implements intelligent request forwarding with the following features:
 //   - Automatic header modification for proxy identification
 //   - Connection pooling for optimal resource utilization
 //   - Configurable timeouts for reliability
 //   - Structured error handling for upstream failures
 //
 // Fields:
-//   target: Parsed URL of the backend service
-//   proxy: Configured httputil.ReverseProxy instance with custom behavior
+//
+//	target: Parsed URL of the backend service
+//	proxy: Configured httputil.ReverseProxy instance with custom behavior
 type Proxy struct {
-	// holds the parsed backend URL for the proxy destination
+	// target holds the parsed backend URL for the proxy destination
 	target *url.URL
 
-	// is the configured httputil.ReverseProxy with custom transport
+	// proxy is the configured httputil.ReverseProxy with custom transport
 	// and response modification behavior
 	proxy *httputil.ReverseProxy
 }
@@ -79,74 +78,82 @@ type Proxy struct {
 //   - MaxIdleConnsPerHost: 10 (per-host connection limit)
 //
 // Parameters:
-//   targetURL: The backend service URL (must be valid HTTP/HTTPS URL)
+//
+//	targetURL: The backend service URL (must be valid HTTP/HTTPS URL)
 //
 // Returns:
-//   *Proxy: Configured proxy instance ready for request handling
-//   error: Configuration error if target URL is invalid
+//
+//	*Proxy: Configured proxy instance ready for request handling
+//	error: Configuration error if target URL is invalid
 //
 // Example:
-//   proxy, err := NewProxy("https://api.backend.com:8080")
-//   if err != nil {
-//       return fmt.Errorf("proxy setup failed: %w", err)
-//   }
+//
+//	proxy, err := NewProxy("https://api.backend.com:8080")
+//	if err != nil {
+//	    return fmt.Errorf("proxy setup failed: %w", err)
+//	}
 func NewProxy(targetURL string) (*Proxy, error) {
-	parsedURL, err := url.Parse(targetURL)
+	target, err := url.Parse(targetURL)
 	if err != nil {
-		return nil, fmt.Errorf("invalid target URL: %w", err)
+		return nil, fmt.Errorf("invalid target URL '%s': %w", targetURL, err)
 	}
 
-	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-		return nil, fmt.Errorf("unsupported URL scheme: %s, must be http or https", parsedURL.Scheme)
+	if target.Scheme != "http" && target.Scheme != "https" {
+		return nil, fmt.Errorf("unsupported URL scheme '%s': must be http or https", target.Scheme)
 	}
 
-	proxy := httputil.NewSingleHostReverseProxy(parsedURL)
+	proxy := httputil.NewSingleHostReverseProxy(target)
+
 	proxy.ModifyResponse = modifyResponse
 	proxy.ErrorHandler = errorHandler
-
 	proxy.Transport = &http.Transport{
-		ResponseHeaderTimeout: 30 * time.Second, 
-		IdleConnTimeout:       90 * time.Second,
-		MaxIdleConns:          100,
-		MaxIdleConnsPerHost:   10,
+		ResponseHeaderTimeout: 30 * time.Second, // Prevent hanging on slow responses
+		IdleConnTimeout:       90 * time.Second, // Connection reuse window
+		MaxIdleConns:          100,              // Global connection pool size
+		MaxIdleConnsPerHost:   10,               // Per-host connection limit
+		MaxConnsPerHost:       50,               // Maximum concurrent connections per host
+		DisableCompression:    false,            // Enable gzip compression
+		ForceAttemptHTTP2:     true,             // Prefer HTTP/2 when available
 	}
 
 	return &Proxy{
-		target: parsedURL,
-		proxy: proxy,
+		target: target,
+		proxy:  proxy,
 	}, nil
 }
 
-// ServeHTTP implements the http.Handler interface to process incoming HTTP 
-// requests and forward them to the configured backend target.
+// ServeHTTP implements the http.Handler interface to process incoming HTTP requests
+// and forward them to the configured backend target.
 //
 // This method performs the following operations:
-//   1. Logs the incoming request for debugging and monitoring
-//   2. Adds proxy-specific headers for backend identification
-//   3. Forwards the request using the configured reverse proxy
-//   4. Handles any upstream errors with structured error responses
+//  1. Logs the incoming request for debugging and monitoring
+//  2. Adds proxy-specific headers for backend identification
+//  3. Forwards the request using the configured reverse proxy
+//  4. Handles any upstream errors with structured error responses
 //
 // Request Headers Added:
 //   - X-Forwarded-Host: Original request host for backend identification
 //   - X-Forwarded-Proto: Protocol scheme (http/https) for secure handling
 //
 // Parameters:
-//   w: HTTP response writer for sending responses to the client
-//   r: HTTP request to be proxied to the backend service
+//
+//	w: HTTP response writer for sending responses to the client
+//	r: HTTP request to be proxied to the backend service
 //
 // The method is thread-safe and can handle multiple concurrent requests.
 // Request logging includes method, path, and target information for debugging.
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("%s %s -> %s%s\n", r.Method, r.URL.Path, p.target.Host, r.URL.Path)
+	fmt.Printf("🔄 %s %s -> %s%s\n", r.Method, r.URL.Path, p.target.Host, r.URL.Path)
 
 	r.Header.Set("X-Forwarded-Host", r.Host)
-	scheme := "http"
 
+	scheme := "http"
 	if r.TLS != nil {
 		scheme = "https"
 	}
 
 	r.Header.Set("X-Forwarded-Proto", scheme)
+
 	if clientIP := r.Header.Get("X-Real-IP"); clientIP == "" {
 		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded == "" {
 			r.Header.Set("X-Forwarded-For", r.RemoteAddr)
@@ -170,19 +177,21 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 //   - Security header injection
 //
 // Parameters:
-//   r: HTTP response from the backend service
+//
+//	r: HTTP response from the backend service
 //
 // Returns:
-//   error: Always nil in current implementation; reserved for future use
-func modifyResponse(resp *http.Response) error {
-	resp.Header.Set("X-Proxied-By", "Velocity-Gateway/0.1.0")
-	resp.Header.Set("X-Gateway-Time", time.Now().UTC().Format(time.RFC3339))
+//
+//	error: Always nil in current implementation; reserved for future use
+func modifyResponse(r *http.Response) error {
+	r.Header.Set("X-Proxied-By", "Velocity-Gateway/0.1.0")
+	r.Header.Set("X-Gateway-Time", time.Now().UTC().Format(time.RFC3339))
 
 	return nil
 }
 
-// errorHandler processes errors that occur during request proxying and 
-// generates appropriate HTTP error responses for clients.
+// errorHandler processes errors that occur during request proxying and generates
+// appropriate HTTP error responses for clients.
 //
 // This function handles various types of upstream failures including:
 //   - Connection timeouts and network errors
@@ -191,64 +200,57 @@ func modifyResponse(resp *http.Response) error {
 //   - HTTP protocol errors
 //
 // Error Response Format:
-//   Content-Type: application/json
-//   Status Code: 502 Bad Gateway
-//   Body: Structured JSON with error details
+//
+//	Content-Type: application/json
+//	Status Code: 502 Bad Gateway
+//	Body: Structured JSON with error details
 //
 // Response Schema:
-//   {
-//     "error": "Bad Gateway",
-//     "message": "Human-readable error description",
-//     "code": "UPSTREAM_UNAVAILABLE",
-//     "timestamp": "2024-01-01T00:00:00Z"
-//   }
+//
+//	{
+//	  "error": "Bad Gateway",
+//	  "message": "Human-readable error description",
+//	  "code": "UPSTREAM_UNAVAILABLE",
+//	  "timestamp": "2024-01-01T00:00:00Z"
+//	}
 //
 // Parameters:
-//   w: HTTP response writer for sending error responses
-//   r: Original HTTP request that failed
-//   err: Error that occurred during proxying
+//
+//	w: HTTP response writer for sending error responses
+//	r: Original HTTP request that failed
+//	err: Error that occurred during proxying
 //
 // The function logs all errors for debugging and monitoring while providing
-// clean, structured error responses to clients without exposing internal 
-// details.
+// clean, structured error responses to clients without exposing internal details.
 func errorHandler(w http.ResponseWriter, r *http.Request, err error) {
-	fmt.Printf("Proxy error for %s %s: %v\n", r.Method, r.URL.Path, err)
-	fmt.Printf("   Target: %s\n", r.URL.String())
-	fmt.Printf("   Error type: %T\n", err)
-	fmt.Printf("   Error details: %+v\n", err)
+	fmt.Printf("❌ Proxy error for %s %s: %v\n", r.Method, r.URL.Path, err)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Gateway-Error", "true")
-	w.WriteHeader(http.StatusBadGateway)
 
+	w.WriteHeader(http.StatusBadGateway)
 	errorResponse := fmt.Sprintf(`{
 		"error": "Bad Gateway",
 		"message": "The upstream server is not available",
 		"code": "UPSTREAM_UNAVAILABLE",
 		"timestamp": "%s",
-		"request_id": "%s",
-		"debug": {
-			"error_type": "%T",
-			"error_message": "%v",
-			"target_url": "%s"
-		}
-	}`, time.Now().UTC().Format(time.RFC3339), generateRequestID(r), err, err, r.URL.String())
+		"request_id": "%s"
+	}`, time.Now().UTC().Format(time.RFC3339), generateRequestID(r))
 
 	w.Write([]byte(errorResponse))
 }
 
-// generateRequestID creates a unique identifier for request tracking and 
-// debugging.
-//
-// This is a simple implementation for the MVP; future versions will use more
-// sophisticated correlation ID generation.
+// generateRequestID creates a unique identifier for request tracking and
+// debugging. This is a simple implementation for the MVP; future versions will
+// use more sophisticated correlation ID generation.
 //
 // Parameters:
-//   r: HTTP request for context
+//
+//	r: HTTP request for context
 //
 // Returns:
-//   string: Unique request identifier
+//
+//	string: Unique request identifier
 func generateRequestID(r *http.Request) string {
-	// Simple request ID based on timestamp and method for MVP
 	return fmt.Sprintf("%d-%s", time.Now().UnixNano(), r.Method)
 }

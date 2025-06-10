@@ -2,7 +2,7 @@
 // A high-performance HTTP reverse proxy that serves as the
 // foundation for a full-featured API gateway.
 //
-// The Velocity Gateway MVP provides basic HTTP proxying capabilities with a 
+// The Velocity Gateway MVP provides basic HTTP proxying capabilities with a
 // focus on simplicity and performance.
 //
 // Usage:
@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
 	"velocity/internal"
 )
 
@@ -41,8 +42,9 @@ import (
 //  4. Start the HTTP server with grafecul logging and error handling.
 //
 // Exit Codes:
-//  0: Normal termination
-//  1: Configuration error or server startup failure
+//
+//	0: Normal termination
+//	1: Configuration error or server startup failure
 func main() {
 	port := flag.String("port", "8080", "HTTP Server Port Number")
 	target := flag.String("target", "http://localhost:3000", "Backend Target URL")
@@ -72,13 +74,15 @@ func main() {
 // gateway is running and responding to requests. e
 //
 // Response Format:
-//  Content-Type: application/json
-//  Status Code: 200 OK
-//  Body: {"status": "healthy", "service": "velocity-gateway"}
+//
+//	Content-Type: application/json
+//	Status Code: 200 OK
+//	Body: {"status": "healthy", "service": "velocity-gateway"}
 //
 // Parameters:
-//   w: HTTP response writer for sending the health status
-//   r: HTTP request (method and path are ignored)
+//
+//	w: HTTP response writer for sending the health status
+//	r: HTTP request (method and path are ignored)
 //
 // The health check always returns a successful status in the MVP version.
 // Future iterations will include upstream health validation and more

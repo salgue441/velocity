@@ -17,17 +17,18 @@ import (
 // multiple configuration sources and validation.
 //
 // The loader implements a priority-based configuration system:
-//   1. Explicit values (command-line flags, API calls)
-//   2. Environment variables with VELOCITY_ prefix
-//   3. Configuration file (YAML)
-//   4. Default values
+//  1. Explicit values (command-line flags, API calls)
+//  2. Environment variables with VELOCITY_ prefix
+//  3. Configuration file (YAML)
+//  4. Default values
 //
 // Example usage:
-//   loader := NewLoader()
-//   config, err := loader.LoadFromFile("config.yaml")
-//   if err != nil {
-//       log.Fatalf("Failed to load configuration: %v", err)
-//   }
+//
+//	loader := NewLoader()
+//	config, err := loader.LoadFromFile("config.yaml")
+//	if err != nil {
+//	    log.Fatalf("Failed to load configuration: %v", err)
+//	}
 type Loader struct {
 	// envPrefix is the prefix for environment variable lookups
 	envPrefix string
@@ -37,7 +38,8 @@ type Loader struct {
 // The loader is configured to use the VELOCITY_ prefix for environment variables.
 //
 // Returns:
-//   *Loader: New configuration loader instance
+//
+//	*Loader: New configuration loader instance
 func NewLoader() *Loader {
 	return &Loader{
 		envPrefix: "VELOCITY_",
@@ -48,11 +50,11 @@ func NewLoader() *Loader {
 // overrides and validation.
 //
 // The loading process follows these steps:
-//   1. Start with default configuration values
-//   2. Load and merge YAML file configuration
-//   3. Apply environment variable overrides
-//   4. Validate the final configuration
-//   5. Return validated configuration or error
+//  1. Start with default configuration values
+//  2. Load and merge YAML file configuration
+//  3. Apply environment variable overrides
+//  4. Validate the final configuration
+//  5. Return validated configuration or error
 //
 // Environment Variable Mapping:
 //   - VELOCITY_SERVER_PORT overrides server.port
@@ -61,20 +63,23 @@ func NewLoader() *Loader {
 //   - VELOCITY_HEALTH_CHECK_ENABLED overrides health_check.enabled
 //
 // Parameters:
-//   filename: Path to the YAML configuration file
+//
+//	filename: Path to the YAML configuration file
 //
 // Returns:
-//   *Config: Loaded and validated configuration
-//   error: Loading or validation error
+//
+//	*Config: Loaded and validated configuration
+//	error: Loading or validation error
 //
 // Example:
-//   config, err := loader.LoadFromFile("config.yaml")
-//   if err != nil {
-//       return fmt.Errorf("configuration loading failed: %w", err)
-//   }
+//
+//	config, err := loader.LoadFromFile("config.yaml")
+//	if err != nil {
+//	    return fmt.Errorf("configuration loading failed: %w", err)
+//	}
 func (l *Loader) LoadFromFile(filename string) (*Config, error) {
 	config := DefaultConfig()
-	
+
 	if _, err := os.Stat(filename); err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("configuration file '%s' not found", filename)
@@ -82,24 +87,24 @@ func (l *Loader) LoadFromFile(filename string) (*Config, error) {
 
 		return nil, fmt.Errorf("error accessing configuration file '%s': %w", filename, err)
 	}
-	
+
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read configuration file '%s': %w", filename, err)
 	}
-	
+
 	if err := yaml.Unmarshal(data, config); err != nil {
 		return nil, fmt.Errorf("failed to parse YAML configuration: %w", err)
 	}
-	
+
 	if err := l.applyEnvironmentOverrides(config); err != nil {
 		return nil, fmt.Errorf("failed to apply environment overrides: %w", err)
 	}
-	
+
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
-	
+
 	return config, nil
 }
 
@@ -108,20 +113,21 @@ func (l *Loader) LoadFromFile(filename string) (*Config, error) {
 // file is available.
 //
 // Returns:
-//   *Config: Default configuration with environment overrides
-//   error: Validation error if environment overrides create invalid 
-//          configuration
+//
+//	*Config: Default configuration with environment overrides
+//	error: Validation error if environment overrides create invalid
+//	       configuration
 func (l *Loader) LoadDefault() (*Config, error) {
 	config := DefaultConfig()
-	
+
 	if err := l.applyEnvironmentOverrides(config); err != nil {
 		return nil, fmt.Errorf("failed to apply environment overrides: %w", err)
 	}
-	
+
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
-	
+
 	return config, nil
 }
 
@@ -130,26 +136,28 @@ func (l *Loader) LoadDefault() (*Config, error) {
 // persisting runtime configuration changes.
 //
 // Parameters:
-//   config: Configuration to save
-//   filename: Target file path
+//
+//	config: Configuration to save
+//	filename: Target file path
 //
 // Returns:
-//   error: File writing error
+//
+//	error: File writing error
 func (l *Loader) SaveToFile(config *Config, filename string) error {
 	dir := filepath.Dir(filename)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory '%s': %w", dir, err)
 	}
-	
+
 	data, err := yaml.Marshal(config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal configuration to YAML: %w", err)
 	}
-	
+
 	if err := os.WriteFile(filename, data, 0644); err != nil {
 		return fmt.Errorf("failed to write configuration file '%s': %w", filename, err)
 	}
-	
+
 	return nil
 }
 
@@ -158,20 +166,22 @@ func (l *Loader) SaveToFile(config *Config, filename string) error {
 //
 // Supported environment variables:
 //   - VELOCITY_SERVER_HOST: Override server host
-//   - VELOCITY_SERVER_PORT: Override server port  
+//   - VELOCITY_SERVER_PORT: Override server port
 //   - VELOCITY_LOGGING_LEVEL: Override logging level
 //   - VELOCITY_HEALTH_CHECK_ENABLED: Override health check enabled status
 //
 // Parameters:
-//   config: Configuration to modify with environment overrides
+//
+//	config: Configuration to modify with environment overrides
 //
 // Returns:
-//   error: Parsing error for environment variable values
+//
+//	error: Parsing error for environment variable values
 func (l *Loader) applyEnvironmentOverrides(config *Config) error {
 	if host := os.Getenv(l.envPrefix + "SERVER_HOST"); host != "" {
 		config.Server.Host = host
 	}
-	
+
 	if port := os.Getenv(l.envPrefix + "SERVER_PORT"); port != "" {
 		var portInt int
 		if _, err := fmt.Sscanf(port, "%d", &portInt); err != nil {
@@ -180,7 +190,7 @@ func (l *Loader) applyEnvironmentOverrides(config *Config) error {
 
 		config.Server.Port = portInt
 	}
-	
+
 	if level := os.Getenv(l.envPrefix + "LOGGING_LEVEL"); level != "" {
 		validLevels := map[string]bool{
 			"debug": true, "info": true, "warn": true, "error": true, "fatal": true,
@@ -192,16 +202,16 @@ func (l *Loader) applyEnvironmentOverrides(config *Config) error {
 
 		config.Logging.Level = strings.ToLower(level)
 	}
-	
+
 	if format := os.Getenv(l.envPrefix + "LOGGING_FORMAT"); format != "" {
 		validFormats := map[string]bool{"text": true, "json": true}
 		if !validFormats[strings.ToLower(format)] {
 			return fmt.Errorf("invalid LOGGING_FORMAT value '%s': must be text or json", format)
 		}
-		
+
 		config.Logging.Format = strings.ToLower(format)
 	}
-	
+
 	// Health check configuration overrides
 	if enabled := os.Getenv(l.envPrefix + "HEALTH_CHECK_ENABLED"); enabled != "" {
 		switch strings.ToLower(enabled) {
@@ -215,7 +225,7 @@ func (l *Loader) applyEnvironmentOverrides(config *Config) error {
 			return fmt.Errorf("invalid HEALTH_CHECK_ENABLED value '%s': must be true/false", enabled)
 		}
 	}
-	
+
 	if algorithm := os.Getenv(l.envPrefix + "LOAD_BALANCING_ALGORITHM"); algorithm != "" {
 		validAlgorithms := map[string]bool{
 			"round_robin": true, "weighted_round_robin": true,
@@ -228,7 +238,7 @@ func (l *Loader) applyEnvironmentOverrides(config *Config) error {
 
 		config.LoadBalancing.Algorithm = algorithm
 	}
-	
+
 	return nil
 }
 
@@ -237,7 +247,8 @@ func (l *Loader) applyEnvironmentOverrides(config *Config) error {
 // initial setup.
 //
 // Returns:
-//   string: YAML configuration with comments and examples
+//
+//	string: YAML configuration with comments and examples
 func (l *Loader) GenerateExample() string {
 	return `# Velocity Gateway Configuration Example
 # This file demonstrates all available configuration options
@@ -333,10 +344,12 @@ version: "0.2.0"
 // administrative tools.
 //
 // Parameters:
-//   filename: Path to the configuration file to validate
+//
+//	filename: Path to the configuration file to validate
 //
 // Returns:
-//   error: Validation error if file is invalid, nil if valid
+//
+//	error: Validation error if file is invalid, nil if valid
 func (l *Loader) ValidateFile(filename string) error {
 	_, err := l.LoadFromFile(filename)
 	return err
