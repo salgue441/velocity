@@ -1,0 +1,216 @@
+# Velocity Gateway - .gitignore
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+velocity
+velocity.exe
+bin/
+dist/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.p12
+secrets/
+config/secrets/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+log/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency lock files (uncomment if using dep)
+# Gopkg.lock
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+.temp/
+
+# Build artifacts
+build/
+target/
+out/
+
+# Docker artifacts
+docker-compose.override.yml
+.dockerignore.bak
+
+# Local development
+.local/
+local/
+dev/
+*.local
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Configuration overrides (keep examples, ignore actual configs)
+config.yaml
+config.yml
+config.json
+!config.example.yaml
+!config.example.yml
+!config.example.json
+
+# SSL/TLS certificates
+*.crt
+*.cert
+*.ca-bundle
+
+# Kubernetes secrets
+*-secret.yaml
+secret-*.yaml
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Documentation artifacts
+docs/generated/
+docs/html/
+site/
+
+# Monitoring and profiling
+profile.out
+cpu.prof
+mem.prof
+trace.out
+
+# Performance test results
+benchmark.txt
+performance/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Velocity Gateway specific
+velocity-gateway
+velocity-gateway.exe
+velocity-*
+gateway-*
+
+# Development tools output
+air_tmp/
+.air.toml
+
+# Go module proxy cache
+GOPROXY=
+GOSUMDB=
+
+# Local development scripts
+run.sh
+start.sh
+dev.sh
+debug.sh
+
+# Load testing results
+k6-results/
+*.har
+
+# Prometheus data
+prometheus_data/
+grafana_data/
+
+# Redis dumps
+dump.rdb
+
+# PostgreSQL
+*.sql.bak
