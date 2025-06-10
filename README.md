@@ -2,8 +2,6 @@
 
 <div align="center">
 
-![Velocity Logo](https://via.placeholder.com/200x80/6366f1/ffffff?text=VELOCITY)
-
 **High-Performance API Gateway Built for Modern Applications**
 
 [![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://golang.org)
@@ -37,6 +35,7 @@ Velocity is a **lightning-fast**, **production-ready** API Gateway designed for 
 ## ✨ Features
 
 ### Core Gateway Features
+
 - **🌐 Reverse Proxy**: High-performance request routing and load balancing
 - **🔐 Authentication Hub**: JWT, OAuth2, API keys, custom authentication
 - **⚡ Rate Limiting**: Token bucket, sliding window, distributed rate limiting
@@ -45,6 +44,7 @@ Velocity is a **lightning-fast**, **production-ready** API Gateway designed for 
 - **🔀 Request Transformation**: Headers, body modification, request/response hooks
 
 ### Advanced Capabilities
+
 - **📊 Real-time Analytics**: Request metrics, error rates, latency percentiles
 - **🎯 Traffic Splitting**: A/B testing, canary deployments, blue-green routing
 - **🔌 Plugin Ecosystem**: Custom middleware, transformations, integrations
@@ -53,6 +53,7 @@ Velocity is a **lightning-fast**, **production-ready** API Gateway designed for 
 - **🔍 Distributed Tracing**: OpenTelemetry integration for request flow visibility
 
 ### Operations & DevOps
+
 - **🐳 Container Native**: Multi-arch Docker images (AMD64/ARM64)
 - **☸️ Kubernetes Ready**: Helm charts, operators, horizontal pod autoscaling
 - **📈 Observability**: Prometheus metrics, Grafana dashboards, alerting
@@ -64,6 +65,7 @@ Velocity is a **lightning-fast**, **production-ready** API Gateway designed for 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Go 1.22+ (for building from source)
 - Docker & Docker Compose (for containerized deployment)
 - PostgreSQL 13+ and Redis 6+ (for persistent storage)
@@ -151,6 +153,7 @@ curl http://localhost:8080/api/v1/users \
 Velocity is engineered for extreme performance and efficiency:
 
 ### Benchmarks
+
 - **Throughput**: 1,000,000+ requests per second
 - **Latency**: <1ms P99 latency for simple proxying
 - **Memory**: <100MB base memory usage
@@ -171,6 +174,7 @@ make benchmark
 ```
 
 ### Architecture Optimizations
+
 - **Zero-copy networking** where possible
 - **Connection pooling** and reuse
 - **Efficient memory allocation** patterns
@@ -204,7 +208,7 @@ database:
     database: "velocity"
     username: "velocity"
     password: "password"
-  
+
   redis:
     host: "localhost"
     port: 6379
@@ -217,7 +221,7 @@ observability:
     prometheus:
       enabled: true
       path: "/metrics"
-  
+
   tracing:
     enabled: true
     jaeger:
@@ -293,6 +297,7 @@ Tracing    CORS/Headers   Transform  Circuit    Caching
 ## 📚 Documentation
 
 ### Quick Links
+
 - [📖 User Guide](docs/user-guide.md) - Complete usage documentation
 - [🏗️ Architecture](docs/architecture/overview.md) - System design and patterns
 - [🔌 Plugin Development](docs/plugins/getting-started.md) - Building custom plugins
@@ -301,6 +306,7 @@ Tracing    CORS/Headers   Transform  Circuit    Caching
 - [🔧 Configuration Reference](docs/configuration.md) - All configuration options
 
 ### Tutorials
+
 - [Getting Started Tutorial](docs/tutorials/getting-started.md)
 - [Microservices Setup](docs/tutorials/microservices.md)
 - [Authentication Configuration](docs/tutorials/authentication.md)
@@ -312,6 +318,7 @@ Tracing    CORS/Headers   Transform  Circuit    Caching
 ## 🧪 Development
 
 ### Prerequisites
+
 - Go 1.22+
 - Docker & Docker Compose
 - Make
@@ -370,15 +377,19 @@ make docker-push        # Push Docker images
 ## 🌟 Use Cases
 
 ### Microservices Architecture
+
 Perfect for organizations transitioning to microservices, providing unified API management, security, and observability across distributed services.
 
 ### API Management Platform
+
 Enterprise-grade API gateway for managing external APIs, partner integrations, and developer portals with comprehensive analytics.
 
 ### Traffic Management
+
 Advanced traffic routing for blue-green deployments, canary releases, and A/B testing with real-time traffic splitting.
 
 ### Security Gateway
+
 Centralized security enforcement point with authentication, authorization, rate limiting, and threat protection.
 
 ---
@@ -396,6 +407,7 @@ We love contributions! Whether it's bug reports, feature requests, or code contr
 5. **🔀 Open** a Pull Request
 
 ### Development Guidelines
+
 - Follow [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
 - Write tests for new features
 - Update documentation for user-facing changes
@@ -414,11 +426,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🌟 Support
 
 ### Community Support
+
 - **📋 GitHub Issues**: Bug reports and feature requests
 - **💬 Discussions**: Questions and community help
 - **📺 Examples**: Real-world usage examples and tutorials
 
 ### Commercial Support
+
 - **🏢 Enterprise Support**: Priority support and consulting
 - **🔧 Custom Development**: Feature development and integration
 - **📊 Training**: Team training and best practices
