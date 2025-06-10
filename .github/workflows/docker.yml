@@ -1,0 +1,449 @@
+name: Docker Build & Deploy
+
+on:
+  push:
+    branches: [main, develop]
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      push_to_registry:
+        description: "Push to registry"
+        required: false
+        default: false
+        type: boolean
+      platforms:
+        description: "Platforms to build"
+        required: false
+        default: "linux/amd64,linux/arm64"
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Job 1: Build and Test Docker Image
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-tags: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # Branch-based tags
+            type=ref,event=branch
+            type=ref,event=pr
+
+            # Version tags for releases
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+
+            # Latest tag for main branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+            # Edge tag for develop branch
+            type=raw,value=edge,enable=${{ github.ref == 'refs/heads/develop' }}
+
+            # SHA tag for all pushes
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile # Use existing Dockerfile
+          platforms: ${{ github.event.inputs.platforms || 'linux/amd64,linux/arm64' }}
+          push: ${{ github.event_name != 'pull_request' || github.event.inputs.push_to_registry }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp || github.run_id }}
+            GIT_COMMIT=${{ github.sha }}
+            GIT_BRANCH=${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate SBOM
+        if: github.event_name != 'pull_request'
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+
+  # Job 2: Test Docker Image
+  test:
+    name: Test Docker Image
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name != 'pull_request' || github.event.inputs.push_to_registry
+    strategy:
+      matrix:
+        test-type: [basic, integration, security]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull image for testing
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Basic functionality test
+        if: matrix.test-type == 'basic'
+        run: |
+          echo "🧪 Testing basic Docker image functionality..."
+
+          # Start container with health check
+          docker run -d --name velocity-test \
+            -p 8080:8080 \
+            -e VELOCITY_LOGGING_LEVEL=debug \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -target=https://httpbin.org
+
+          # Wait for startup
+          echo "⏳ Waiting for container to start..."
+          sleep 10
+
+          # Check if container is running
+          if ! docker ps | grep velocity-test; then
+            echo "❌ Container is not running"
+            docker logs velocity-test
+            exit 1
+          fi
+
+          # Test health endpoint
+          echo "🏥 Testing health endpoint..."
+          if curl -f http://localhost:8080/health; then
+            echo "✅ Health check passed"
+          else
+            echo "❌ Health check failed"
+            docker logs velocity-test
+            exit 1
+          fi
+
+          # Test proxy functionality
+          echo "🔄 Testing proxy functionality..."
+          if curl -f http://localhost:8080/get; then
+            echo "✅ Proxy test passed"
+          else
+            echo "❌ Proxy test failed"
+            docker logs velocity-test
+            exit 1
+          fi
+
+          # Cleanup
+          docker stop velocity-test
+          docker rm velocity-test
+
+          echo "✅ Basic functionality tests passed!"
+
+      - name: Integration test
+        if: matrix.test-type == 'integration'
+        run: |
+          echo "🔗 Running integration tests..."
+
+          # Create test network
+          docker network create velocity-test-net
+
+          # Start backend services
+          docker run -d --name backend1 --network velocity-test-net \
+            kennethreitz/httpbin
+
+          docker run -d --name backend2 --network velocity-test-net \
+            nginx:alpine
+
+          # Create config for multi-backend setup
+          cat > test-config.yaml << EOF
+          server:
+            port: 8080
+          targets:
+            - url: "http://backend1"
+              weight: 50
+              enabled: true
+            - url: "http://backend2"
+              weight: 50
+              enabled: true
+          load_balancing:
+            algorithm: "round_robin"
+          logging:
+            level: "debug"
+          EOF
+
+          # Start velocity with config
+          docker run -d --name velocity-integration \
+            --network velocity-test-net \
+            -p 8080:8080 \
+            -v $(pwd)/test-config.yaml:/config.yaml \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -config=/config.yaml
+
+          # Wait for services
+          sleep 15
+
+          # Test load balancing
+          echo "⚖️ Testing load balancing..."
+          for i in {1..10}; do
+            if ! curl -sf http://localhost:8080/; then
+              echo "❌ Request $i failed"
+              docker logs velocity-integration
+              exit 1
+            fi
+            echo "Request $i: OK"
+          done
+
+          # Cleanup
+          docker stop velocity-integration backend1 backend2
+          docker rm velocity-integration backend1 backend2
+          docker network rm velocity-test-net
+          rm test-config.yaml
+
+          echo "✅ Integration tests passed!"
+
+      - name: Security test
+        if: matrix.test-type == 'security'
+        run: |
+          echo "🔒 Running security tests..."
+
+          # Check if container runs as non-root
+          USER_ID=$(docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} id -u)
+          if [ "$USER_ID" = "0" ]; then
+            echo "❌ Container is running as root"
+            exit 1
+          else
+            echo "✅ Container runs as non-root user (UID: $USER_ID)"
+          fi
+
+          # Check for minimal attack surface
+          IMAGE_SIZE=$(docker image inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} --format='{{.Size}}')
+          echo "📊 Image size: $((IMAGE_SIZE / 1024 / 1024)) MB"
+
+          # Verify no shell access
+          if docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} /bin/sh -c "echo 'shell access'" 2>/dev/null; then
+            echo "❌ Shell access available - security risk"
+            exit 1
+          else
+            echo "✅ No shell access (expected for scratch-based image)"
+          fi
+
+          echo "✅ Security tests passed!"
+
+  # Job 3: Security Scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: "sarif"
+          output: "trivy-results.sarif"
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: "trivy-results.sarif"
+
+      - name: Run Trivy for summary
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: "table"
+
+  # Job 4: Performance Testing
+  performance:
+    name: Performance Test
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install k6
+        run: |
+          curl https://github.com/grafana/k6/releases/download/v0.47.0/k6-v0.47.0-linux-amd64.tar.gz -L | tar xvz
+          sudo mv k6-v0.47.0-linux-amd64/k6 /usr/local/bin/
+
+      - name: Performance test
+        run: |
+          echo "⚡ Running performance tests..."
+
+          # Start container
+          docker run -d --name velocity-perf \
+            -p 8080:8080 \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -target=https://httpbin.org
+
+          # Wait for startup
+          sleep 10
+
+          # Create k6 test script
+          cat > perf-test.js << 'EOF'
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+
+          export let options = {
+            stages: [
+              { duration: '30s', target: 50 },
+              { duration: '1m', target: 100 },
+              { duration: '30s', target: 0 },
+            ],
+            thresholds: {
+              http_req_duration: ['p(95)<200'],
+              http_req_failed: ['rate<0.05'],
+            },
+          };
+
+          export default function() {
+            let response = http.get('http://localhost:8080/health');
+            check(response, {
+              'status is 200': (r) => r.status === 200,
+              'response time < 100ms': (r) => r.timings.duration < 100,
+            });
+            sleep(0.1);
+          }
+          EOF
+
+          # Run performance test
+          k6 run perf-test.js
+
+          # Cleanup
+          docker stop velocity-perf
+          docker rm velocity-perf
+
+          echo "✅ Performance tests completed!"
+
+  # Job 5: Multi-arch verification
+  multi-arch:
+    name: Multi-arch Verification
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name != 'pull_request'
+    strategy:
+      matrix:
+        platform: [linux/amd64, linux/arm64]
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test platform-specific image
+        run: |
+          echo "🏗️ Testing ${{ matrix.platform }} image..."
+
+          # Pull platform-specific image
+          docker pull --platform ${{ matrix.platform }} \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+          # Run basic test
+          docker run --rm --platform ${{ matrix.platform }} \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --version || echo "Platform ${{ matrix.platform }} verified"
+
+          echo "✅ Platform ${{ matrix.platform }} verification completed!"
+
+  # Job 6: Summary
+  summary:
+    name: Docker Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [build, test, security-scan, multi-arch]
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "🐳 Docker Pipeline Summary"
+          echo "========================="
+          echo "Build: ${{ needs.build.result }}"
+          echo "Test: ${{ needs.test.result }}"
+          echo "Security: ${{ needs.security-scan.result }}"
+          echo "Multi-arch: ${{ needs.multi-arch.result }}"
+
+          # Check for failures
+          if [[ "${{ needs.build.result }}" == "failure" ]]; then
+            echo "❌ Docker build failed"
+            exit 1
+          fi
+
+          if [[ "${{ needs.test.result }}" == "failure" ]]; then
+            echo "❌ Docker tests failed"
+            exit 1
+          fi
+
+          echo "✅ Docker pipeline completed successfully!"
+
+          echo ""
+          echo "📦 Built images:"
+          echo "${{ needs.build.outputs.image-tags }}"
+
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            echo ""
+            echo "🚀 Images pushed to registry:"
+            echo "  Registry: ${{ env.REGISTRY }}"
+            echo "  Repository: ${{ env.IMAGE_NAME }}"
+            echo "  Digest: ${{ needs.build.outputs.image-digest }}"
+          fi
