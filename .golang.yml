@@ -1,0 +1,106 @@
+# Velocity Gateway - golangci-lint configuration
+# https://golangci-lint.run/usage/configuration/
+
+run:
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+  skip-dirs:
+    - vendor
+    - .git
+    - bin
+    - dist
+  skip-files:
+    - ".*_test.go" # Skip some test files if needed
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  uniq-by-line: true
+  sort-results: true
+
+linters-settings:
+  # Cyclomatic complexity
+  cyclop:
+    max-complexity: 15
+    package-average: 10.0
+    skip-tests: true
+
+  # Duplicate code detection
+  dupl:
+    threshold: 100
+
+  # Error handling
+  errorlint:
+    errorf: true
+    asserts: true
+    comparison: true
+
+  # Function length
+  funlen:
+    lines: 100
+    statements: 60
+
+  # Cognitive complexity
+  gocognit:
+    min-complexity: 20
+
+  # Cyclomatic complexity
+  gocyclo:
+    min-complexity: 15
+
+  # Dot imports
+  goimports:
+    local-prefixes: velocity
+
+  # Line length
+  lll:
+    line-length: 120
+
+  # Struct alignment
+  maligned:
+    suggest-new: true
+
+  # Naming conventions
+  revive:
+    min-confidence: 0
+    rules:
+      - name: atomic
+      - name: line-length-limit
+        arguments: [120]
+      - name: argument-limit
+        arguments: [8]
+      - name: cyclomatic
+        arguments: [15]
+      - name: max-public-structs
+        arguments: [10]
+      - name: file-header
+        disabled: true
+
+  # Unused code
+  unused:
+    check-exported: false
+
+  # Whitespace
+  wsl:
+    strict-append: true
+    allow-assign-and-call: true
+    allow-multiline-assign: true
+    allow-separated-leading-comment: true
+
+  # Spelling
+  misspell:
+    locale: US
+
+  # Security
+  gosec:
+    includes:
+      - G101 # Look for hard coded credentials
+      - G102 # Bind to all interfaces
+      - G103 # Audit the use of unsafe block
+      - G104 # Audit errors not checked
+      - G105 # Audit the use of math/big.Int.Exp
+      - G106 # Audit the use of ssh.InsecureIgnoreHostKey
+      - G107 # Url provided to HTTP request as taint input
+      - G108 # Profiling endpoint automatically exposed on /
