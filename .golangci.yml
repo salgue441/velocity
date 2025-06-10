@@ -1,0 +1,237 @@
+# Velocity Gateway - golangci-lint configuration
+# https://golangci-lint.run/usage/configuration/
+
+run:
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+  go: "1.23" # Specify Go version to avoid compatibility issues
+  skip-dirs:
+    - vendor
+    - .git
+    - bin
+    - dist
+    - tools # Skip tools directory
+  skip-files:
+    - ".*\\.pb\\.go$" # Skip protobuf files
+    - ".*_generated\\.go$" # Skip generated files
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  uniq-by-line: true
+  sort-results: true
+
+linters-settings:
+  # Cyclomatic complexity
+  cyclop:
+    max-complexity: 15
+    package-average: 10.0
+    skip-tests: true
+
+  # Duplicate code detection
+  dupl:
+    threshold: 100
+
+  # Error handling
+  errorlint:
+    errorf: true
+    asserts: true
+    comparison: true
+
+  # Function length
+  funlen:
+    lines: 100
+    statements: 60
+
+  # Cognitive complexity
+  gocognit:
+    min-complexity: 20
+
+  # Cyclomatic complexity
+  gocyclo:
+    min-complexity: 15
+
+  # Dot imports
+  goimports:
+    local-prefixes: velocity
+
+  # Line length
+  lll:
+    line-length: 120
+
+  # Struct alignment
+  maligned:
+    suggest-new: true
+
+  # Naming conventions
+  revive:
+    min-confidence: 0
+    rules:
+      - name: atomic
+      - name: line-length-limit
+        arguments: [120]
+      - name: argument-limit
+        arguments: [8]
+      - name: cyclomatic
+        arguments: [15]
+      - name: max-public-structs
+        arguments: [10]
+      - name: file-header
+        disabled: true
+
+  # Unused code
+  unused:
+    check-exported: false
+
+  # Whitespace
+  wsl:
+    strict-append: true
+    allow-assign-and-call: true
+    allow-multiline-assign: true
+    allow-separated-leading-comment: true
+
+  # Spelling
+  misspell:
+    locale: US
+
+  # Security
+  gosec:
+    includes:
+      - G101 # Look for hard coded credentials
+      - G102 # Bind to all interfaces
+      - G103 # Audit the use of unsafe block
+      - G104 # Audit errors not checked
+      - G105 # Audit the use of math/big.Int.Exp
+      - G106 # Audit the use of ssh.InsecureIgnoreHostKey
+      - G107 # Url provided to HTTP request as taint input
+      - G108 # Profiling endpoint automatically exposed on /debug/pprof
+      - G109 # Potential Integer overflow made by strconv.Atoi result conversion
+      - G110 # Potential DoS vulnerability via decompression bomb
+      - G201 # SQL query construction using format string
+      - G202 # SQL query construction using string concatenation
+      - G203 # Use of unescaped data in HTML templates
+      - G204 # Audit use of command execution
+      - G301 # Poor file permissions used when creating a directory
+      - G302 # Poor file permissions used when creation file or using chmod
+      - G303 # Creating tempfile using a predictable path
+      - G304 # File path provided as taint input
+      - G305 # File traversal when extracting zip archive
+      - G401 # Detect the usage of DES, RC4, MD5 or SHA1
+      - G402 # Look for bad TLS connection settings
+      - G403 # Ensure minimum RSA key length of 2048 bits
+      - G404 # Insecure random number source (rand)
+      - G501 # Import blocklist: crypto/md5
+      - G502 # Import blocklist: crypto/des
+      - G503 # Import blocklist: crypto/rc4
+      - G504 # Import blocklist: net/http/cgi
+      - G505 # Import blocklist: crypto/sha1
+    excludes:
+      - G114 # Use of net/http serve function that has no support for setting timeouts
+
+linters:
+  disable-all: true
+  enable:
+    # Essential linters only to start
+    - errcheck # Checks for unchecked errors
+    - gosimple # Simplify code
+    - govet # Reports suspicious constructs
+    - ineffassign # Detects ineffectual assignments
+    - staticcheck # Go static analysis (but may cause issues)
+    - typecheck # Type-checking errors
+    - unused # Checks for unused constants, variables, functions and types
+
+    # Safe additional linters
+    - gofmt # Checks whether code was gofmt-ed
+    - goimports # Check import formatting
+    - misspell # Finds commonly misspelled English words
+    - goconst # Finds repeated strings that could be constants
+    - unconvert # Remove unnecessary type conversions
+
+    # Comment out problematic linters temporarily
+    # - revive        # Fast, configurable, extensible, flexible, and beautiful linter for Go
+    # - gosec         # Inspects source code for security problems
+    # - cyclop        # Checks function and package cyclomatic complexity
+
+  # Disabled linters (with reasons)
+  # - containedctx  # Too strict for our use case
+  # - contextcheck  # Too many false positives
+  # - decorder      # Not critical for our architecture
+  # - depguard      # We manage dependencies manually
+  # - dogsled       # Acceptable to have blank identifiers
+  # - errchkjson    # Too strict for our JSON handling
+  # - forcetypeassert # Type assertions are sometimes necessary
+  # - gci           # We use goimports
+  # - godox         # TODOs are acceptable during development
+  # - goerr113      # Dynamic errors are sometimes needed
+  # - gofmt         # We use goimports
+  # - gofumpt       # We use goimports
+  # - goheader      # No standard header required
+  # - golint        # Deprecated, replaced by revive
+  # - grouper       # Not critical for our code organization
+  # - importas      # No import aliases needed
+  # - interfacebloat # Interfaces are reasonably sized
+  # - ireturn       # Returning interfaces is sometimes correct
+  # - maintidx      # Maintainability index not critical
+  # - maligned      # Struct alignment not critical for performance
+  # - nilnil        # Returning nil,nil is sometimes correct
+  # - paralleltest  # Not all tests need to be parallel
+  # - prealloc      # Premature optimization
+  # - tagliatelle   # JSON tag formatting not critical
+  # - testifylint   # Additional testify checks not needed
+  # - testpackage   # Tests in same package are acceptable
+  # - varnamelen    # Variable name length not critical
+  # - wrapcheck     # Error wrapping handled case by case
+
+issues:
+  # List of regexps of issue texts to exclude
+  exclude:
+    # Default excludes from golangci-lint
+    - "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*print(f|ln)?|os\\.(Un)?Setenv). is not checked"
+    - "func name will be used as test\\.Test.* by other packages, and that stutters; consider calling this"
+    - "G103: Use of unsafe calls should be audited"
+    - "G104: Errors unhandled"
+    - "G204: Subprocess launched with variable"
+    - "G304: Potential file inclusion via variable"
+
+  # Exclude specific linters for specific files/directories
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - funlen
+        - gocognit
+        - cyclop
+
+    # Exclude some linters from running on main.go
+    - path: cmd/main\.go
+      linters:
+        - gochecknoinits # main.go can have init functions
+
+    # Exclude magic number detection for configuration defaults
+    - path: internal/config/
+      linters:
+        - gomnd
+
+    # Exclude long line linter for generated files
+    - path: ".*\\.pb\\.go"
+      linters:
+        - lll
+
+  # Maximum issues count per one linter
+  max-issues-per-linter: 0
+
+  # Maximum count of issues with the same text
+  max-same-issues: 0
+
+  # Show only new issues: if there are unstaged changes or untracked files,
+  # only those changes are analyzed, else only changes in HEAD~ are analyzed
+  new: false
+
+  # Fix found issues (if it's supported by the linter)
+  fix: false
