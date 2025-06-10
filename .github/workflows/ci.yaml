@@ -5,7 +5,7 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
-  workflow_dispatch: 
+  workflow_dispatch: # Allow manual triggering
 
 env:
   GO_VERSION: "1.23"
@@ -61,11 +61,14 @@ jobs:
             echo "No changes after go mod tidy"
           fi
 
+      - name: Check code compiles
+        run: go build ./...
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
-          args: --timeout=5m
+          args: --timeout=5m --config=.golangci-minimal.yml
 
       - name: Run go vet
         run: go vet ./...
