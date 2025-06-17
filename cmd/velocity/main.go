@@ -42,7 +42,7 @@ func main() {
 	proxyHandler, proxyErr = proxy.New(cfg)
 	if proxyErr != nil {
 		log.Printf("Failed to create proxy: %v", proxyErr)
-		// Continue without proxy for now
+		log.Fatal("Cannot start gateway without proxy functionality")
 	}
 
 	// Basic HTTP server to start with
@@ -65,6 +65,28 @@ func main() {
 		}
 
 		fmt.Fprintf(w, `]}`)
+	})
+
+	mux.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		if proxyHandler != nil {
+			stats := proxyHandler.GetStats()
+			fmt.Fprintf(w, `{"stats":[`)
+
+			for i, stat := range stats {
+				if i > 0 {
+					fmt.Fprintf(w, `,`)
+				}
+
+				fmt.Fprintf(w, `{"target":"%s","requests":%d,"successes":%d,"failures":%d}`,
+					cfg.Targets[i].URL, stat.Requests, stat.Successes, stat.Failures)
+			}
+
+			fmt.Fprintf(w, `]}`)
+		} else {
+			fmt.Fprintf(w, `{"error":"Proxy not configured"}`)
+		}
 	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

@@ -9,3 +9,7 @@ targets:
     enabled: true
   - url: "http://localhost:4000"
     enabled: true
+
+logging:
+  level: "info"
+  format: "text"
