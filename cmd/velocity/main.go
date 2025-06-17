@@ -12,6 +12,7 @@ import (
 	"os"
 
 	"velocity/internal/config"
+	"velocity/internal/proxy"
 )
 
 func main() {
@@ -34,6 +35,17 @@ func main() {
 		log.Printf("Config file %s not found, using default configuration", *configFile)
 	}
 
+	// Create proxy
+	var proxyHandler *proxy.Proxy
+	var proxyErr error
+
+	proxyHandler, proxyErr = proxy.New(cfg)
+	if proxyErr != nil {
+		log.Printf("Failed to create proxy: %v", proxyErr)
+		// Continue without proxy for now
+	}
+
+	// Basic HTTP server to start with
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -56,8 +68,12 @@ func main() {
 	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"message":"Velocity Gateway - Coming Soon"}`)
+		if proxyHandler != nil {
+			proxyHandler.ServeHTTP(w, r)
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, `{"message":"Velocity Gateway - Coming Soon"}`)
+		}
 	})
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
