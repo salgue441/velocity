@@ -6,7 +6,8 @@ import "time"
 
 // Config represents the main configuration structure
 type Config struct {
-	Server ServerConfig `yaml:"server"`
+	Server  ServerConfig   `yaml:"server"`
+	Targets []TargetConfig `yaml:"targets"`
 }
 
 // ServerConfig defines basic server settings
@@ -17,6 +18,12 @@ type ServerConfig struct {
 	WriteTimeout time.Duration `yaml:"write_timeout"`
 }
 
+// TargetConfig defines a backend target
+type TargetConfig struct {
+	URL     string `yaml:"url"`
+	Enabled bool   `yaml:"enabled"`
+}
+
 // DefaultConfig returns a configuration with sensible defaults
 func DefaultConfig() *Config {
 	return &Config{
@@ -25,6 +32,12 @@ func DefaultConfig() *Config {
 			Port:         8080,
 			ReadTimeout:  30 * time.Second,
 			WriteTimeout: 30 * time.Second,
+		},
+		Targets: []TargetConfig{
+			{
+				URL: "http://localhost:3000",
+				Enabled: true,
+			},
 		},
 	}
 }

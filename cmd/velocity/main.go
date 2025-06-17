@@ -40,12 +40,27 @@ func main() {
 		fmt.Fprintf(w, `{"status":"ok","service":"velocity-gateway"}`)
 	})
 
+	mux.HandleFunc("/targets", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"targets":[`)
+
+		for i, target := range cfg.Targets {
+			if i > 0 {
+				fmt.Fprintf(w, `,`)
+			}
+
+			fmt.Fprintf(w, `{"url":"%s","enabled":%t}`, target.URL, target.Enabled)
+		}
+
+		fmt.Fprintf(w, `]}`)
+	})
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"message":"Velocity Gateway - Coming Soon"}`)
 	})
 
-	addr := ":8080"
+	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	log.Printf("Starting Velocity Gateway on %s", addr)
 
 	server := &http.Server{
