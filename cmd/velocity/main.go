@@ -5,6 +5,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,21 +15,23 @@ import (
 )
 
 func main() {
-	var cfg *config.Config
+	configFile := flag.String("config", "config.yaml", "Path to configuration file")
+	flag.Parse()
 
-	if _, err := os.Stat("config.yaml"); err == nil {
+	var cfg *config.Config
+	if _, err := os.Stat(*configFile); err == nil {
 		var loadErr error
 
-		cfg, loadErr = config.LoadFromFile("config.yaml")
+		cfg, loadErr = config.LoadFromFile(*configFile)
 		if loadErr != nil {
 			log.Printf("Failed to load config file: %v, using defaults", loadErr)
 			cfg = config.DefaultConfig()
 		} else {
-			log.Printf("Loaded configuration from config.yaml")
+			log.Printf("Loaded configuration from %s", *configFile)
 		}
 	} else {
 		cfg = config.DefaultConfig()
-		log.Println("Using default configuration")
+		log.Printf("Config file %s not found, using default configuration", *configFile)
 	}
 
 	mux := http.NewServeMux()
