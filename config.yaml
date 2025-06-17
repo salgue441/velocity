@@ -8,4 +8,4 @@ targets:
   - url: "http://localhost:3000"
     enabled: true
   - url: "http://localhost:4000"
-    enabled: false
+    enabled: true
